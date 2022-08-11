@@ -90,4 +90,4 @@ fabric.properties
 
 .idea
 .DS_Store
-
+.env
