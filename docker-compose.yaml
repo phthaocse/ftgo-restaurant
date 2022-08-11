@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  ftgo-postgres:
+    container_name: postgres_ftgo
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-12345678x@X}
+      PGDATA: /data/postgres
+    volumes:
+      - ftgo-postgres:/data/postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - ftgo-postgres
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: pgadmin_ftgo
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - ftgo-pgadmin:/var/lib/pgadmin
+
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - ftgo-postgres
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.5
+    container_name: zookeeper-ftgo
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+
+  kafka-broker:
+    image: confluentinc/cp-kafka:7.0.5
+    container_name: kafka-broker-ftgo
+    depends_on:
+      - zookeeper
+    ports:
+      # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
+      # An important note about accessing Kafka from clients on other machines:
+      # -----------------------------------------------------------------------
+      #
+      # The config used here exposes port 9092 for _external_ connections to the broker
+      # i.e. those from _outside_ the docker network. This could be from the host machine
+      # running docker, or maybe further afield if you've got a more complicated setup.
+      # If the latter is true, you will need to change the value 'localhost' in
+      # KAFKA_ADVERTISED_LISTENERS to one that is resolvable to the docker host from those
+      # remote clients
+      #
+      # For connections _internal_ to the docker network, such as from other services
+      # and components, use broker:29092.
+      #
+      # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
+      # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
+      #
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
+
+
+networks:
+  ftgo-postgres:
+    driver: bridge
+
+volumes:
+  ftgo-postgres:
+  ftgo-pgadmin:

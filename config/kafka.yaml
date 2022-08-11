@@ -1,0 +1,8 @@
+kafka-consumer:
+  "bootstrap.servers": localhost
+  "enable.auto.commit": false
+  "enable.auto.offset.store": false
+  "auto.offset.reset": earliest
+  "group.id": order-consumer
+kafka-producer:
+  "bootstrap.servers": localhost
